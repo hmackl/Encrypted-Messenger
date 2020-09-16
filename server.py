@@ -4,10 +4,11 @@ soc = socket.socket()
 host = socket.getfqdn()
 soc.bind((host, 6969))
 
-soc.listen(100)
+soc.listen()
 
-sockets = {}
-
-while 1:
-    c, host = soc.accept()
-    print(c.recv(2056))
+conn, host = soc.accept()
+print(host[0] + ' Connected')
+while conn:
+    data = conn.recv(2056)
+    print('Recieved: ' + data.decode())
+    conn.sendall(data)
