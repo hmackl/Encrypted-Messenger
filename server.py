@@ -5,14 +5,22 @@ import sqlite3
 soc = socket.socket()
 host = socket.getfqdn()
 soc.bind((host, 6969))
-
 soc.listen()
 
 clients = {}
 
+
+def addUser(username, password):
+    dbConn = sqlite3.connect('messenger.db')
+    dbCursor = dbConn.cursor()
+    dbCursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
+    dbConn.commit()
+
+#addUser('Harry', 'MyPassword')
+
 class ClientThread(threading.Thread):
     def __init__(self, conn, host):
-        super().__init__() #overrides parent class 'threading.Thread' __init__
+        super().__init__()  # overrides parent class 'threading.Thread' __init__
         self.conn = conn
         self.host = host
         self.username = ''
@@ -20,20 +28,26 @@ class ClientThread(threading.Thread):
     def run(self):
         while self.conn:
             try:
-                data = conn.recv(2056)
-                if data == b'': raise Exception('dc')
+                data = self.conn.recv(2056)
+                if data == b'':
+                    raise Exception('dc')
                 data = data.decode().split('|')
                 if data[0] == '01':
-                    print('%s(%s) sent: %s' % (self.host[0], self.username, self.binDecode(data[1])))
+                    clients[data[1]].send(
+                        self.username, self.binDecode(data[2]))
+                    print('%s(%s) sent: %s' %
+                          (self.host[0], self.username, self.binDecode(data[2])))
                 elif data[0] == '00':
                     if self.getUser(self.binDecode(data[1])) == self.binDecode(data[2]):
-                        conn.send(b'200')
+                        self.conn.send(b'200')
                         self.username = self.binDecode(data[1])
+                        clients[self.username] = clients.pop(host[0])
                         print(self.username + ' Logged in')
                     else:
-                        conn.send(b'401')
+                        self.conn.send(b'401')
             except Exception as e:
-                if e != 'dc': print(e)
+                if e != 'dc':
+                    print(e)
                 self.conn = False
                 print(self.host[0] + ' Disconnected')
 
@@ -42,16 +56,25 @@ class ClientThread(threading.Thread):
         for i in binary.split('.'):
             string += chr(int(i, 2))
         return string
-    
+
     def getUser(self, username):
         dbConn = sqlite3.connect('messenger.db')
         dbCursor = dbConn.cursor()
-        dbCursor.execute('SELECT password FROM users WHERE username=?', (username,))
+        dbCursor.execute(
+            'SELECT password FROM users WHERE username=?', (username,))
         res = dbCursor.fetchone()
-        if res: return res[0]
-        else: return False
+        if res:
+            return res[0]
+        else:
+            return False
+
+    def send(self, username, message):
+        data = '01|%s|%s' % (username, message)
+        self.conn.send(data.encode())
+
 
 while 1:
     conn, host = soc.accept()
     print(host[0] + ' Connected')
-    clients[host[0]] = ClientThread(conn, host).start()
+    clients[host[0]] = ClientThread(conn, host)
+    clients[host[0]].start()

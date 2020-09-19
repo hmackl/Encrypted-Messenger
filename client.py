@@ -1,6 +1,6 @@
 import socket
 import tkinter as tk
-import time
+import threading
 
 soc = socket.socket()
 
@@ -54,6 +54,9 @@ class connectWindow(tk.Frame):
             if status == b'200':
                 print('Connected')
                 app.msg['state'] = 'normal'
+                app.recipent['state'] = 'normal'
+                app.username = self.username.get()
+                threading.Thread(target=app.receive).start()
                 self.master.destroy()
             elif status == b'401':
                 print('Wrong password')
@@ -71,14 +74,18 @@ class chatWindow(tk.Frame):
         self.connect()
 
     def placeholder(self, event):
+        print(event)
         self.msg.delete('0.0', 'end')
         self.msg.unbind('<Button-1>')
 
     def createWidgets(self):
+        self.recipent = tk.Entry(self, width=53)
+        self.recipent.pack(side='top')
         self.log = tk.Text(self, height=40, width=40, state='disabled')
         self.log.pack(side='top')
-        self.msg = tk.Text(self, height=10, width=40, state='disabled')
+        self.msg = tk.Text(self, height=10, width=40)
         self.msg.insert('0.0', 'Press <Return> to send message')
+        self.msg['state'] = 'disabled'
         self.msg.bind('<Button-1>', self.placeholder)
         self.msg.pack(side='top')
         self.msg.bind('<Return>', self.send)
@@ -87,19 +94,24 @@ class chatWindow(tk.Frame):
         self.connectWindow = tk.Toplevel(self.master)
         self.app = connectWindow(self.connectWindow)
         self.connectWindow.attributes('-topmost', True)
-        #self.receive()
-
+        
     def send(self, event):
         msg = self.msg.get('0.0', 'end-1c')
         self.msg.delete('0.0', 'end')
-        req = '01|%s' % binEncode(msg)
+        req = '01|%s|%s' % (self.recipent.get(), binEncode(msg))
         soc.send(req.encode())
+        self.log['state'] = 'normal'
+        self.log.insert('end', self.username + ': ' + msg + '\n')
+        self.log['state'] = 'disabled'
         return 'break'
 
     def receive(self):
         while 1:
-            msg = soc.recv(2056)
-            self.log.insert(self, msg.decode())
+            msg = soc.recv(2056).decode()
+            msg = msg.split('|')
+            self.log['state'] = 'normal'
+            self.log.insert('end', msg[1] + ': ' + msg[2] + '\n')
+            self.log['state'] = 'disabled'
 
 root = tk.Tk()
 root.title('Private Messaging')
