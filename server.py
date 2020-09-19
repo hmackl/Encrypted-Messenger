@@ -1,5 +1,6 @@
 import socket
 import threading
+import sqlite3
 
 soc = socket.socket()
 host = socket.getfqdn()
@@ -9,14 +10,48 @@ soc.listen()
 
 clients = {}
 
-def client_thread(conn, host):
-    while conn:
-        data = conn.recv(2056)
-        print('Recieved: ' + data.decode())
-        conn.sendall(data)
+class ClientThread(threading.Thread):
+    def __init__(self, conn, host):
+        super().__init__() #overrides parent class 'threading.Thread' __init__
+        self.conn = conn
+        self.host = host
+        self.username = ''
+
+    def run(self):
+        while self.conn:
+            try:
+                data = conn.recv(2056)
+                if data == b'': raise Exception('dc')
+                data = data.decode().split('|')
+                if data[0] == '01':
+                    print('%s(%s) sent: %s' % (self.host[0], self.username, self.binDecode(data[1])))
+                elif data[0] == '00':
+                    if self.getUser(self.binDecode(data[1])) == self.binDecode(data[2]):
+                        conn.send(b'200')
+                        self.username = self.binDecode(data[1])
+                        print(self.username + ' Logged in')
+                    else:
+                        conn.send(b'401')
+            except Exception as e:
+                if e != 'dc': print(e)
+                self.conn = False
+                print(self.host[0] + ' Disconnected')
+
+    def binDecode(self, binary):
+        string = ''
+        for i in binary.split('.'):
+            string += chr(int(i, 2))
+        return string
+    
+    def getUser(self, username):
+        dbConn = sqlite3.connect('messenger.db')
+        dbCursor = dbConn.cursor()
+        dbCursor.execute('SELECT password FROM users WHERE username=?', (username,))
+        res = dbCursor.fetchone()
+        if res: return res[0]
+        else: return False
 
 while 1:
     conn, host = soc.accept()
     print(host[0] + ' Connected')
-    clients[host[0]] = threading.Thread(target=client_thread, args=(conn, host))
-    clients[host[0]].start()
+    clients[host[0]] = ClientThread(conn, host).start()
