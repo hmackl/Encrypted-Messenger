@@ -4,13 +4,14 @@ import threading
 
 soc = socket.socket()
 
-def binEncode(string):
+def binEnc(string):
     return '.'.join(format(ord(i), 'b') for i in string)
 
-def binDecode(binary):
+def binDec(binary):
     string = ''
-    for i in binary.split('.'):
-        string += chr(int(i, 2))
+    if binary:
+        for i in binary.split('.'):
+            string += chr(int(i, 2))
     return string
 
 class connectWindow(tk.Frame):
@@ -47,8 +48,8 @@ class connectWindow(tk.Frame):
             if self.serverIP != self.server.get():
                 soc.connect((self.server.get(), 6969))
                 self.serverIP = self.server.get()
-            req = '00|%s|%s' % (binEncode(self.username.get()), 
-                                binEncode(self.password.get()))
+            req = '00|%s|%s' % (binEnc(self.username.get()), 
+                                binEnc(self.password.get()))
             soc.send(req.encode())
             status = soc.recv(2056)
             if status == b'200':
@@ -74,7 +75,6 @@ class chatWindow(tk.Frame):
         self.connect()
 
     def placeholder(self, event):
-        print(event)
         self.msg.delete('0.0', 'end')
         self.msg.unbind('<Button-1>')
 
@@ -98,7 +98,7 @@ class chatWindow(tk.Frame):
     def send(self, event):
         msg = self.msg.get('0.0', 'end-1c')
         self.msg.delete('0.0', 'end')
-        req = '01|%s|%s' % (self.recipent.get(), binEncode(msg))
+        req = '01|%s|%s' % (self.recipent.get(), binEnc(msg))
         soc.send(req.encode())
         self.log['state'] = 'normal'
         self.log.insert('end', self.username + ': ' + msg + '\n')
@@ -110,8 +110,12 @@ class chatWindow(tk.Frame):
             msg = soc.recv(2056).decode()
             msg = msg.split('|')
             self.log['state'] = 'normal'
-            self.log.insert('end', msg[1] + ': ' + msg[2] + '\n')
+            self.log.insert('end', binDec(msg[1]) + ': ' + binDec(msg[2]) + '\n')
+            self.log.see('end')
             self.log['state'] = 'disabled'
+
+    def genKey(self):
+        
 
 root = tk.Tk()
 root.title('Private Messaging')

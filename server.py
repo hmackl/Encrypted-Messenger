@@ -13,10 +13,12 @@ clients = {}
 def addUser(username, password):
     dbConn = sqlite3.connect('messenger.db')
     dbCursor = dbConn.cursor()
-    dbCursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
+    dbCursor.execute(
+        'INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
     dbConn.commit()
 
 #addUser('Harry', 'MyPassword')
+
 
 class ClientThread(threading.Thread):
     def __init__(self, conn, host):
@@ -33,14 +35,11 @@ class ClientThread(threading.Thread):
                     raise Exception('dc')
                 data = data.decode().split('|')
                 if data[0] == '01':
-                    clients[data[1]].send(
-                        self.username, self.binDecode(data[2]))
-                    print('%s(%s) sent: %s' %
-                          (self.host[0], self.username, self.binDecode(data[2])))
+                    clients[data[1]].send(self.binEnc(self.username), data[2])
                 elif data[0] == '00':
-                    if self.getUser(self.binDecode(data[1])) == self.binDecode(data[2]):
+                    if self.getUser(self.binDec(data[1])) == self.binDec(data[2]):
                         self.conn.send(b'200')
-                        self.username = self.binDecode(data[1])
+                        self.username = self.binDec(data[1])
                         clients[self.username] = clients.pop(host[0])
                         print(self.username + ' Logged in')
                     else:
@@ -51,11 +50,14 @@ class ClientThread(threading.Thread):
                 self.conn = False
                 print(self.host[0] + ' Disconnected')
 
-    def binDecode(self, binary):
+    def binDec(self, binary):
         string = ''
         for i in binary.split('.'):
             string += chr(int(i, 2))
         return string
+
+    def binEnc(self, string):
+        return '.'.join(format(ord(i), 'b') for i in string)
 
     def getUser(self, username):
         dbConn = sqlite3.connect('messenger.db')
