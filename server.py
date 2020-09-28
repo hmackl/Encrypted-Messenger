@@ -13,11 +13,12 @@ clients = {}
 def addUser(username, password):
     dbConn = sqlite3.connect('messenger.db')
     dbCursor = dbConn.cursor()
+    #dbCursor.execute('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username NOT NULL UNIQUE, password NOT NULL)')
     dbCursor.execute(
         'INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
     dbConn.commit()
 
-#addUser('Harry', 'MyPassword')
+#addUser('harry', 'hpass')
 
 
 class ClientThread(threading.Thread):
@@ -34,8 +35,25 @@ class ClientThread(threading.Thread):
                 if data == b'':
                     raise Exception('dc')
                 data = data.decode().split('|')
-                if data[0] == '01':
-                    clients[data[1]].send(self.binEnc(self.username), data[2])
+                if data[0] == '02':
+                    if self.binDec(data[1]) in clients:
+                        clients[self.binDec(data[1])].send(
+                            '02', self.binEnc(self.username) + '|' + data[2])
+                    else:
+                        self.conn.send(b'404')
+                elif data[0] == '01.1':
+                    if self.binDec(data[1]) in clients:
+                        clients[self.binDec(data[1])].send(
+                            '01.1', self.binEnc(self.username) + '|' + data[2])
+
+                elif data[0] == '01':
+                    if self.binDec(data[1]) in clients:
+                        clients[self.binDec(data[1])].send('01', self.binEnc(self.username) +
+                                                           '|' + data[2] +
+                                                           '|' + data[3] +
+                                                           '|' + data[4])
+                    else:
+                        self.conn.send(b'404')
                 elif data[0] == '00':
                     if self.getUser(self.binDec(data[1])) == self.binDec(data[2]):
                         self.conn.send(b'200')
@@ -45,10 +63,11 @@ class ClientThread(threading.Thread):
                     else:
                         self.conn.send(b'401')
             except Exception as e:
-                if e != 'dc':
-                    print(e)
+                if e == Exception('dc'):
+                    print(self.host[0] + ' Disconnected')
+                else:
+                    print('Error: ' + str(e))
                 self.conn = False
-                print(self.host[0] + ' Disconnected')
 
     def binDec(self, binary):
         string = ''
@@ -70,8 +89,8 @@ class ClientThread(threading.Thread):
         else:
             return False
 
-    def send(self, username, message):
-        data = '01|%s|%s' % (username, message)
+    def send(self, code, message):
+        data = '%s|%s' % (code, message)
         self.conn.send(data.encode())
 
 

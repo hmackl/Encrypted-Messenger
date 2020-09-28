@@ -1,6 +1,9 @@
 import socket
 import tkinter as tk
 import threading
+import math
+import random
+import prime
 
 soc = socket.socket()
 
@@ -56,7 +59,11 @@ class connectWindow(tk.Frame):
                 print('Connected')
                 app.msg['state'] = 'normal'
                 app.recipent['state'] = 'normal'
+                #app.privateKey = ''.join(str(ord(c)) for c in self.password.get())
+                app.privateKey = 0
+                for c in self.password.get(): app.privateKey += ord(c)
                 app.username = self.username.get()
+                root.title('Private Messaging - ' + self.username.get())
                 threading.Thread(target=app.receive).start()
                 self.master.destroy()
             elif status == b'401':
@@ -69,6 +76,7 @@ class connectWindow(tk.Frame):
 class chatWindow(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
+        self.chats = []
         self.master = master
         self.pack()
         self.createWidgets()
@@ -79,26 +87,35 @@ class chatWindow(tk.Frame):
         self.msg.unbind('<Button-1>')
 
     def createWidgets(self):
-        self.recipent = tk.Entry(self, width=53)
-        self.recipent.pack(side='top')
-        self.log = tk.Text(self, height=40, width=40, state='disabled')
-        self.log.pack(side='top')
+        self.recipent = tk.Entry(self, width=38)
+        self.recipent.grid(row=1, column=0, sticky='we')
+        self.linkButton = tk.Button(self, text='Link', width=8, command=self.link)
+        self.linkButton.grid(row=1, column=1)
+        self.log = tk.Text(self, height=30, width=40, state='disabled')
+        self.log.grid(row=2, columnspan=2)
         self.msg = tk.Text(self, height=10, width=40)
         self.msg.insert('0.0', 'Press <Return> to send message')
         self.msg['state'] = 'disabled'
         self.msg.bind('<Button-1>', self.placeholder)
-        self.msg.pack(side='top')
+        self.msg.grid(row=3, columnspan=2)
         self.msg.bind('<Return>', self.send)
 
     def connect(self):
         self.connectWindow = tk.Toplevel(self.master)
         self.app = connectWindow(self.connectWindow)
         self.connectWindow.attributes('-topmost', True)
+
+    def link(self):
+        self.pubKeys = self.genKey()
+        keys = self.pubKeys
+        keys.append(keys[1] ** int(self.privateKey) % keys[0])
+        req = '01|%s|%s|%s|%s' % (binEnc(self.recipent.get()), keys[0], keys[1], keys[2])
+        soc.send(req.encode())
         
     def send(self, event):
         msg = self.msg.get('0.0', 'end-1c')
         self.msg.delete('0.0', 'end')
-        req = '01|%s|%s' % (self.recipent.get(), binEnc(msg))
+        req = '02|%s|%s' % (binEnc(self.recipent.get()), binEnc(msg))
         soc.send(req.encode())
         self.log['state'] = 'normal'
         self.log.insert('end', self.username + ': ' + msg + '\n')
@@ -109,13 +126,28 @@ class chatWindow(tk.Frame):
         while 1:
             msg = soc.recv(2056).decode()
             msg = msg.split('|')
-            self.log['state'] = 'normal'
-            self.log.insert('end', binDec(msg[1]) + ': ' + binDec(msg[2]) + '\n')
-            self.log.see('end')
-            self.log['state'] = 'disabled'
+            if msg[0] == '404':
+                print('Client not available')
+            elif msg[0] == '01':
+                print('Connection request recieved from: %s (%s, %s, %s)' % (binDec(msg[1]), msg[2], msg[3], msg[4]))
+                print('Encryption Key: ' + str(int(msg[4]) ** self.privateKey % int(msg[2])))
+                req = '01.1|%s|%s' % (msg[1], (int(msg[3]) ** self.privateKey % int(msg[2])))
+                soc.send(req.encode())
+            elif msg[0] == '01.1':
+                print('Connection Request Fufilled: ' + msg[2])
+                print('Encryption Key: ' + str(int(msg[2]) ** self.privateKey % self.pubKeys[0]))
+            elif msg[0] == '02':
+                self.log['state'] = 'normal'
+                self.log.insert('end', binDec(msg[1]) + ': ' + binDec(msg[2]) + '\n')
+                self.log.see('end')
+                self.log['state'] = 'disabled'
 
     def genKey(self):
-        
+        keys = [0, -1]
+        while keys[1] == -1:
+            keys[0] = prime.prime()
+            keys[1] = prime.primitiveRoot(keys[0])
+        return keys
 
 root = tk.Tk()
 root.title('Private Messaging')
