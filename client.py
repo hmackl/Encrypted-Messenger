@@ -136,11 +136,19 @@ class chatWindow(tk.Frame):
             elif msg[0] == '01.1':
                 print('Connection Request Fufilled: ' + msg[2])
                 print('Encryption Key: ' + str(int(msg[2]) ** self.privateKey % self.pubKeys[0]))
+                self.encryptionKey = int(msg[2]) ** self.privateKey % self.pubKeys[0]
             elif msg[0] == '02':
                 self.log['state'] = 'normal'
                 self.log.insert('end', binDec(msg[1]) + ': ' + binDec(msg[2]) + '\n')
                 self.log.see('end')
                 self.log['state'] = 'disabled'
+
+    def encrypt(self, key, plainText):
+        cipherText = ''
+        for i in range(plainText):
+            print('%s + %s' % (ord(plainText[i], key[i])))
+            cipherText += ord(plainText[i]) + key[i]
+        #'.'.join(format(ord(i), 'b') for i in string)
 
     def genKey(self):
         keys = [0, -1]
