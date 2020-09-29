@@ -59,7 +59,6 @@ class connectWindow(tk.Frame):
                 print('Connected')
                 app.msg['state'] = 'normal'
                 app.recipent['state'] = 'normal'
-                #app.privateKey = ''.join(str(ord(c)) for c in self.password.get())
                 app.privateKey = 0
                 for c in self.password.get(): app.privateKey += ord(c)
                 app.username = self.username.get()
@@ -113,7 +112,7 @@ class chatWindow(tk.Frame):
         soc.send(req.encode())
         
     def send(self, event):
-        msg = self.msg.get('0.0', 'end-1c')
+        msg = self.encrypt(self.encryptionKey, self.msg.get('0.0', 'end-1c'))
         self.msg.delete('0.0', 'end')
         req = '02|%s|%s' % (binEnc(self.recipent.get()), binEnc(msg))
         soc.send(req.encode())
@@ -131,6 +130,7 @@ class chatWindow(tk.Frame):
             elif msg[0] == '01':
                 print('Connection request recieved from: %s (%s, %s, %s)' % (binDec(msg[1]), msg[2], msg[3], msg[4]))
                 print('Encryption Key: ' + str(int(msg[4]) ** self.privateKey % int(msg[2])))
+                self.encryptionKey = str(int(msg[4]) ** self.privateKey % int(msg[2]))
                 req = '01.1|%s|%s' % (msg[1], (int(msg[3]) ** self.privateKey % int(msg[2])))
                 soc.send(req.encode())
             elif msg[0] == '01.1':
@@ -139,16 +139,15 @@ class chatWindow(tk.Frame):
                 self.encryptionKey = int(msg[2]) ** self.privateKey % self.pubKeys[0]
             elif msg[0] == '02':
                 self.log['state'] = 'normal'
-                self.log.insert('end', binDec(msg[1]) + ': ' + binDec(msg[2]) + '\n')
+                self.log.insert('end', binDec(msg[1]) + ': ' + self.decrypt(self.encryptionKey, binDec(msg[2]).split('.')) + '\n')
                 self.log.see('end')
                 self.log['state'] = 'disabled'
 
     def encrypt(self, key, plainText):
-        cipherText = ''
-        for i in range(plainText):
-            print('%s + %s' % (ord(plainText[i], key[i])))
-            cipherText += ord(plainText[i]) + key[i]
-        #'.'.join(format(ord(i), 'b') for i in string)
+        return '.'.join(str(ord(plainText[i]) ^ int(str(key)[i])) for i in range(len(plainText)))
+
+    def decrypt(self, key, text):
+        return ''.join(chr(int(text[i]) ^ int(str(key)[i])) for i in range(len(text)))
 
     def genKey(self):
         keys = [0, -1]

@@ -29,7 +29,7 @@ def generatePrimes(length):
     p |= (1 << length - 1) | 1
     return p
 
-def prime(length=32):
+def prime(length=48):
     p = 4
     while not checkPrime(p, 128):
         p = generatePrimes(length)
