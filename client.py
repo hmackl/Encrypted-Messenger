@@ -1,5 +1,6 @@
 import socket
 import tkinter as tk
+from tkinter import ttk
 import threading
 import math
 import random
@@ -24,6 +25,7 @@ class connectWindow(tk.Frame):
         self.pack()
         self.createWidgets()
         self.serverIP = ''
+        self.lift()
 
     def createWidgets(self):
         self.serverLabel = tk.Label(self, text='Server: ')
@@ -34,10 +36,12 @@ class connectWindow(tk.Frame):
         self.UsernameLabel = tk.Label(self, text='Username: ')
         self.UsernameLabel.grid(row=1, column=0)
         self.username = tk.Entry(self)
+        self.username.insert(0, 'admin')
         self.username.grid(row=1, column=1)
         self.PasswordLabel = tk.Label(self, text='Password: ')
         self.PasswordLabel.grid(row=2, column=0)
-        self.password = tk.Entry(self)
+        self.password = tk.Entry(self, show='*')
+        self.password.insert(0, 'adpass')
         self.password.grid(row=2, column=1)
         self.password.bind('<Return>', self.submit)
         self.status = tk.StringVar()
@@ -65,6 +69,7 @@ class connectWindow(tk.Frame):
                 root.title('Private Messaging - ' + self.username.get())
                 threading.Thread(target=app.receive).start()
                 self.master.destroy()
+                root.lift()
             elif status == b'401':
                 print('Wrong password')
         except:
@@ -79,44 +84,63 @@ class chatWindow(tk.Frame):
         self.master = master
         self.pack()
         self.createWidgets()
-        self.connect()
 
-    def placeholder(self, event):
-        event.widget.delete('0.0', 'end')
-        event.widget.unbind('<Button-1>')
+    def deletePlaceholder(self, event):
+        if (event.widget['height'] == 1 and event.widget.get() == 'Press <Return> to Connect to User'):
+            event.widget.delete(0, 'end')
+        elif (event.widget['height'] == 10 and event.widget.get('0.0', 'end-1c') == 'Press <Return> to Send Message'):
+            event.widget.delete('0.0', 'end')
+
+    def putPlaceholder(self, event):
+        if event.widget['height'] == 1:
+            if event.widget.get() == '':
+                event.widget.insert(0, 'Press <Return> to Connect to User')
+        elif event.widget['height'] == 10:
+            if event.widget.get('0.0', 'end-1c') == '':
+                event.widget.insert('0.0', 'Press <Return> to Send Message')
+    
+    def focusMsg(self, event):
+        self.msg.focus_set()
 
     def createWidgets(self):
-        self.recipient = tk.Text(self, height=1, width=40)
-        self.recipient.insert('0.0', 'Press <Return> to Connect to User')
+        self.recipient = ttk.Combobox(self, font='TkFixedFont', height=1)
+        self.recipient.insert(0, 'Press <Return> to Connect to User')
         self.recipient['state'] = 'disabled'
-        self.recipient.pack(side='top')
-        self.recipient.bind('<Button-1>', self.placeholder)
+        self.recipient.pack(side='top', fill='x')
+        self.recipient.bind('<FocusIn>', self.deletePlaceholder)
+        self.recipient.bind('<FocusOut>', self.putPlaceholder)
         self.recipient.bind('<Return>', self.link)
         self.log = tk.Text(self, height=30, width=40, state='disabled')
         self.log.pack(side='top')
         self.msg = tk.Text(self, height=10, width=40)
-        self.msg.insert('0.0', 'Press <Return> to send message')
+        self.msg.insert('0.0', 'Press <Return> to Send Message')
         self.msg['state'] = 'disabled'
         self.msg.pack(side='top')
-        self.msg.bind('<Button-1>', self.placeholder)
+        self.log.bind('<FocusIn>', self.focusMsg)
+        self.msg.bind('<FocusIn>', self.deletePlaceholder)
+        self.msg.bind('<FocusOut>', self.putPlaceholder)
         self.msg.bind('<Return>', self.send)
+        
+        self.connect()
 
     def connect(self):
         self.connectWindow = tk.Toplevel(self.master)
         self.app = connectWindow(self.connectWindow)
         self.connectWindow.attributes('-topmost', True)
+        self.connectWindow.protocol('WM_DELETE_WINDOW', root.destroy)
 
     def link(self, event):
         self.pubKeys = self.genKey()
         keys = self.pubKeys
         keys.append(keys[1] ** int(self.privateKey) % keys[0])
-        req = '01|%s|%s|%s|%s' % (binEnc(self.recipient.get('0.0', 'end-1c')), keys[0], keys[1], keys[2])
+        req = '01|%s|%s|%s|%s' % (binEnc(self.recipient.get()), keys[0], keys[1], keys[2])
         soc.send(req.encode())
         
     def send(self, event):
-        msg = self.encrypt(self.encryptionKey, self.msg.get('0.0', 'end-1c'))
+        msg = self.msg.get('0.0', 'end-1c')
+        encrypted = self.encrypt(self.encryptionKey, msg)
         self.msg.delete('0.0', 'end')
-        req = '02|%s|%s' % (binEnc(self.recipient.get('0.0', 'end-1c')), binEnc(msg))
+        req = '02|%s|%s' % (binEnc(self.recipient.get()), binEnc(encrypted))
         soc.send(req.encode())
         self.log['state'] = 'normal'
         self.log.insert('end', self.username + ': ' + msg + '\n')
