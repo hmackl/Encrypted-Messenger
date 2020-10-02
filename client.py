@@ -58,7 +58,7 @@ class connectWindow(tk.Frame):
             if status == b'200':
                 print('Connected')
                 app.msg['state'] = 'normal'
-                app.recipent['state'] = 'normal'
+                app.recipient['state'] = 'normal'
                 app.privateKey = 0
                 for c in self.password.get(): app.privateKey += ord(c)
                 app.username = self.username.get()
@@ -82,21 +82,23 @@ class chatWindow(tk.Frame):
         self.connect()
 
     def placeholder(self, event):
-        self.msg.delete('0.0', 'end')
-        self.msg.unbind('<Button-1>')
+        event.widget.delete('0.0', 'end')
+        event.widget.unbind('<Button-1>')
 
     def createWidgets(self):
-        self.recipent = tk.Entry(self, width=38)
-        self.recipent.grid(row=1, column=0, sticky='we')
-        self.linkButton = tk.Button(self, text='Link', width=8, command=self.link)
-        self.linkButton.grid(row=1, column=1)
+        self.recipient = tk.Text(self, height=1, width=40)
+        self.recipient.insert('0.0', 'Press <Return> to Connect to User')
+        self.recipient['state'] = 'disabled'
+        self.recipient.pack(side='top')
+        self.recipient.bind('<Button-1>', self.placeholder)
+        self.recipient.bind('<Return>', self.link)
         self.log = tk.Text(self, height=30, width=40, state='disabled')
-        self.log.grid(row=2, columnspan=2)
+        self.log.pack(side='top')
         self.msg = tk.Text(self, height=10, width=40)
         self.msg.insert('0.0', 'Press <Return> to send message')
         self.msg['state'] = 'disabled'
+        self.msg.pack(side='top')
         self.msg.bind('<Button-1>', self.placeholder)
-        self.msg.grid(row=3, columnspan=2)
         self.msg.bind('<Return>', self.send)
 
     def connect(self):
@@ -104,17 +106,17 @@ class chatWindow(tk.Frame):
         self.app = connectWindow(self.connectWindow)
         self.connectWindow.attributes('-topmost', True)
 
-    def link(self):
+    def link(self, event):
         self.pubKeys = self.genKey()
         keys = self.pubKeys
         keys.append(keys[1] ** int(self.privateKey) % keys[0])
-        req = '01|%s|%s|%s|%s' % (binEnc(self.recipent.get()), keys[0], keys[1], keys[2])
+        req = '01|%s|%s|%s|%s' % (binEnc(self.recipient.get('0.0', 'end-1c')), keys[0], keys[1], keys[2])
         soc.send(req.encode())
         
     def send(self, event):
         msg = self.encrypt(self.encryptionKey, self.msg.get('0.0', 'end-1c'))
         self.msg.delete('0.0', 'end')
-        req = '02|%s|%s' % (binEnc(self.recipent.get()), binEnc(msg))
+        req = '02|%s|%s' % (binEnc(self.recipient.get('0.0', 'end-1c')), binEnc(msg))
         soc.send(req.encode())
         self.log['state'] = 'normal'
         self.log.insert('end', self.username + ': ' + msg + '\n')
