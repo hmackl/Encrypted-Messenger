@@ -18,7 +18,7 @@ def binDec(binary):
             string += chr(int(i, 2))
     return string
 
-class connectWindow(tk.Frame):
+class ConnectWindow(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
         self.master = master
@@ -77,7 +77,7 @@ class connectWindow(tk.Frame):
             self.statusLabel.grid(row=3, columnspan=2)
         return 'break'
 
-class chatWindow(tk.Frame):
+class ChatWindow(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
         self.chats = []
@@ -124,10 +124,10 @@ class chatWindow(tk.Frame):
         self.connect()
 
     def connect(self):
-        self.connectWindow = tk.Toplevel(self.master)
-        self.app = connectWindow(self.connectWindow)
-        self.connectWindow.attributes('-topmost', True)
-        self.connectWindow.protocol('WM_DELETE_WINDOW', root.destroy)
+        self.ConnectWindow = tk.Toplevel(self.master)
+        self.app = ConnectWindow(self.ConnectWindow)
+        self.ConnectWindow.attributes('-topmost', True)
+        self.ConnectWindow.protocol('WM_DELETE_WINDOW', root.destroy)
 
     def link(self, event):
         self.pubKeys = self.genKey()
@@ -185,5 +185,5 @@ class chatWindow(tk.Frame):
 root = tk.Tk()
 root.title('Private Messaging')
 root.resizable(False, False)
-app = chatWindow(master=root)
+app = ChatWindow(master=root)
 app.mainloop()

@@ -1,3 +1,4 @@
 .vscode
 messenger.db
 __pycache__
+*.zip
