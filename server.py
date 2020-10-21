@@ -35,33 +35,23 @@ class ClientThread(threading.Thread):
                 if data == b'':
                     raise Exception('dc')
                 data = data.decode().split('|')
-                if data[0] == '02':
-                    if self.binDec(data[1]) in clients:
-                        clients[self.binDec(data[1])].send(
-                            '02', self.binEnc(self.username) + '|' + data[2])
-                    else:
-                        self.conn.send(b'404')
-                elif data[0] == '01.1':
-                    if self.binDec(data[1]) in clients:
-                        clients[self.binDec(data[1])].send(
-                            '01.1', self.binEnc(self.username) + '|' + data[2])
-
-                elif data[0] == '01':
-                    if self.binDec(data[1]) in clients:
-                        clients[self.binDec(data[1])].send('01', self.binEnc(self.username) +
-                                                           '|' + data[2] +
-                                                           '|' + data[3] +
-                                                           '|' + data[4])
-                    else:
-                        self.conn.send(b'404')
+                client = self.binDec(data[1])
+                if data[0] == '02' and client in clients:
+                    clients[client].send('02', [self.binEnc(self.username), data[2]])
+                elif data[0] == '01.1' and client in clients:
+                    clients[client].send('01.1', [self.binEnc(self.username), data[2]])
+                elif data[0] == '01' and client in clients:
+                    clients[client].send('01', [self.binEnc(self.username)] + data[2:])
                 elif data[0] == '00':
-                    if self.getUser(self.binDec(data[1])) == self.binDec(data[2]):
+                    if self.getUser(client) == self.binDec(data[2]):
                         self.conn.send(b'200')
-                        self.username = self.binDec(data[1])
+                        self.username = client
                         clients[self.username] = clients.pop(host[0])
                         print(self.username + ' Logged in')
                     else:
                         self.conn.send(b'401')
+                else:
+                    self.conn.send(b'404')
             except Exception as e:
                 if e == Exception('dc'):
                     print(self.host[0] + ' Disconnected')
@@ -89,8 +79,10 @@ class ClientThread(threading.Thread):
         else:
             return False
 
-    def send(self, code, message):
-        data = '%s|%s' % (code, message)
+    def send(self, opcode, oprands):
+        data = '%s' % (opcode)
+        for oprand in oprands:
+            data += '|%s' % (oprand)
         self.conn.send(data.encode())
 
 
