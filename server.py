@@ -2,14 +2,6 @@ import socket
 import threading
 import sqlite3
 
-soc = socket.socket()
-host = socket.getfqdn()
-soc.bind((host, 6969))
-soc.listen()
-
-clients = {}
-
-
 def addUser(username, password):
     dbConn = sqlite3.connect('messenger.db')
     dbCursor = dbConn.cursor()
@@ -20,13 +12,13 @@ def addUser(username, password):
 
 #addUser('harry', 'hpass')
 
-
 class ClientThread(threading.Thread):
-    def __init__(self, conn, host):
+    def __init__(self, server, conn, host):
         super().__init__()  # overrides parent class 'threading.Thread' __init__
         self.conn = conn
         self.host = host
         self.username = ''
+        self.server = server
 
     def run(self):
         while self.conn:
@@ -36,17 +28,17 @@ class ClientThread(threading.Thread):
                     raise Exception('dc')
                 data = data.decode().split('|')
                 client = self.binDec(data[1])
-                if data[0] == '02' and client in clients:
-                    clients[client].send('02', [self.binEnc(self.username), data[2]])
-                elif data[0] == '01.1' and client in clients:
-                    clients[client].send('01.1', [self.binEnc(self.username), data[2]])
-                elif data[0] == '01' and client in clients:
-                    clients[client].send('01', [self.binEnc(self.username)] + data[2:])
+                if data[0] == '02' and client in self.server.clients:
+                    self.server.clients[client].send('02', [self.binEnc(self.username), data[2]])
+                elif data[0] == '01.1' and client in self.server.clients:
+                    self.server.clients[client].send('01.1', [self.binEnc(self.username), data[2]])
+                elif data[0] == '01' and client in self.server.clients:
+                    self.server.clients[client].send('01', [self.binEnc(self.username)] + data[2:])
                 elif data[0] == '00':
                     if self.getUser(client) == self.binDec(data[2]):
                         self.conn.send(b'200')
                         self.username = client
-                        clients[self.username] = clients.pop(host[0])
+                        self.server.clients[self.username] = self.server.clients.pop(self.host[0])
                         print(self.username + ' Logged in')
                     else:
                         self.conn.send(b'401')
@@ -85,9 +77,32 @@ class ClientThread(threading.Thread):
             data += '|%s' % (oprand)
         self.conn.send(data.encode())
 
+class Server(threading.Thread):
+    def __init__(self, port):
+        super().__init__()  # overrides parent class 'threading.Thread' __init__
+        self.port = port
+        self.soc = socket.socket()
+        self.host = socket.getfqdn()
+        self.soc.bind((self.host, port))
+        self.soc.listen()
+        self.clients = {}
+        self.listen()
+    
+    def power(self, a, b):
+            x = 0
+            for i in range(b):
+                x += a
+            return x
 
-while 1:
-    conn, host = soc.accept()
-    print(host[0] + ' Connected')
-    clients[host[0]] = ClientThread(conn, host)
-    clients[host[0]].start()
+    def listen(self):
+        self.ten1 = 10
+        self.ten2 = 10
+        self.one = 1
+        while not (self.ten1-self.power(self.ten2, self.one)):
+            self.conn, self.host = self.soc.accept()
+            print(self.host[0] + ' Connected')
+            self.clients[self.host[0]] = ClientThread(self, self.conn, self.host)
+            self.clients[self.host[0]].start()
+
+server = Server(6969)
+self.server.start()
