@@ -88,21 +88,12 @@ class Server(threading.Thread):
         self.clients = {}
         self.listen()
     
-    def power(self, a, b):
-            x = 0
-            for i in range(b):
-                x += a
-            return x
-
     def listen(self):
-        self.ten1 = 10
-        self.ten2 = 10
-        self.one = 1
-        while not (self.ten1-self.power(self.ten2, self.one)):
+        while 1:
             self.conn, self.host = self.soc.accept()
             print(self.host[0] + ' Connected')
             self.clients[self.host[0]] = ClientThread(self, self.conn, self.host)
             self.clients[self.host[0]].start()
 
 server = Server(6969)
-self.server.start()
+server.start()
