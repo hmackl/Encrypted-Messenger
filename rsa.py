@@ -1,28 +1,36 @@
-from random import randint
+from random import randint, getrandbits
 
-def miller(n):
+def miller(n, k=2):
     i = 0
+    p = 1
+    if (n < 3):
+        return p
+    elif (n % 2 == 0):
+        return 0
     while (2 ** i < n):
         i += 1
         if ((n - 1) % (2 ** i) == 0):
             r = i
             d = int((n - 1) / (2 ** i))
-            print('r: %i, d: %i' % (r, d))
-            a = randint(2, n - 2)
-            a = 174
-            x = (a ** d) % n
-            print('x ', x)
-            print('n ', n)
-            if (x == 1 or x == n - 1):
-                print('c')
-                for i in range(r - 1):
-                    x = (x ** 2) % n
-                    if (x == n - 1):
-                        return 0
-    return 1
+            for _ in range(k):
+                a = randint(2, n - 2)
+                x = pow(a, d, n)
+                if (x != 1 and x != n - 1):
+                    for _ in range(r):
+                        x = pow(x, 2, n)
+                        if (x != n - 1):
+                            p = 0
+        break
+    return p
 
-class RSA:
-    def prime(self):
-        r = randint(999, 10000)
-
-print(miller(221))
+def primeNumber():
+    p = 0
+    while p == 0:
+        p = getrandbits(512)
+        if (not miller(p)):
+            p = 0
+        else:
+            exception = 'BIG Prime: %i' % p
+            raise Exception(exception)
+    
+primeNumber()
