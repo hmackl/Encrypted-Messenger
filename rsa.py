@@ -42,16 +42,62 @@ def miller(n, k=2):
 
 p = 0
 while p == 0:
-    p = getrandbits(512)
+    p = getrandbits(32)
     if (not miller(p)):
         p = 0
 
 q = 0
 while q == 0:
-    q = getrandbits(512)
+    q = getrandbits(32)
     if (not miller(q)):
         q = 0
-
 n = p * q
-
+en = (p - 1) * (q - 1)
+print('En:  %i' % en)
 publicKey = n
+
+def greatestFactor(a, b):
+    x = 0
+    y = 1
+    u = 1
+    v = 0
+    while a != 0:
+        q = b // a
+        r = b % a
+        m = x - u * q
+        n = y - v * q
+        b = a
+        a = r
+        x = u
+        y = v
+        u = m
+        v = n
+    gf = b
+    return gf, x
+
+e = 65537
+def modularInverse(a, m):
+    factor, x = greatestFactor(a, m)
+    if factor != 1:
+        return None  # modular inverse does not exist
+    else:
+        return x % m
+
+privateKey = modularInverse(e, en)
+publicKey = n + e
+
+def parse(word):
+    borg = ''
+    for i in word:
+        uni = '000' + str(ord(i))
+        borg += uni[3:]
+    return int(borg)
+print(privateKey)
+p = parse('hello')
+p = 1230000
+print('Encoded: %i' % p)
+c = (p ** e) % n
+print('Encrypted: %i' % c)
+print('Private key: %i' % privateKey)
+altp = (c ** privateKey) % n
+print('Decrypted: %i' % altp)

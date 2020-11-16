@@ -4,7 +4,6 @@ from tkinter import ttk
 import threading
 import math
 import random
-import prime
 
 soc = socket.socket()
 
