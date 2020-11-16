@@ -99,5 +99,22 @@ print('Encoded: %i' % p)
 c = (p ** e) % n
 print('Encrypted: %i' % c)
 print('Private key: %i' % privateKey)
-altp = (c ** privateKey) % n
-print('Decrypted: %i' % altp)
+
+dp = privateKey % (p - 1)
+print('a')
+dq = privateKey % (q - 1)
+print('b')
+qinv = modularInverse(q, p)
+print('c')
+m1 = (c ** dp) % p
+print('d')
+m2 = (c ** dq) % q
+print('e')
+h = (qinv * (m1 - m2)) % p
+print('f')
+m = m2 + h * q
+print('g')
+print('Decrypted: %i' % m)
+
+# altp = (c ** privateKey) % n
+# print('Decrypted: %i' % altp)
