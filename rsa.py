@@ -51,11 +51,10 @@ while q == 0:
     q = getrandbits(32)
     if (not miller(q)):
         q = 0
-n = p * q
-en = (p - 1) * (q - 1)
-print('En:  %i' % en)
-publicKey = n
 
+print('P: %i, Q: %i' % (p, q))
+n = p * q
+print('N: %i' % n)
 def greatestFactor(a, b):
     x = 0
     y = 1
@@ -75,6 +74,8 @@ def greatestFactor(a, b):
     gf = b
     return gf, x
 
+en = ((p - 1) * (q - 1)) // greatestFactor(p - 1, q - 1)[0]
+print('en %i' % en)
 e = 65537
 def modularInverse(a, m):
     factor, x = greatestFactor(a, m)
@@ -82,39 +83,22 @@ def modularInverse(a, m):
         return None  # modular inverse does not exist
     else:
         return x % m
-
+print(e, en)
 privateKey = modularInverse(e, en)
+print('modinv %i' % privateKey)
 publicKey = n + e
 
 def parse(word):
     borg = ''
     for i in word:
-        uni = '000' + str(ord(i))
+        uni = '00' + str(ord(i))
         borg += uni[3:]
     return int(borg)
-print(privateKey)
 p = parse('hello')
-p = 1230000
+
 print('Encoded: %i' % p)
-c = (p ** e) % n
+c = pow(p, e, n)
 print('Encrypted: %i' % c)
 print('Private key: %i' % privateKey)
-
-dp = privateKey % (p - 1)
-print('a')
-dq = privateKey % (q - 1)
-print('b')
-qinv = modularInverse(q, p)
-print('c')
-m1 = (c ** dp) % p
-print('d')
-m2 = (c ** dq) % q
-print('e')
-h = (qinv * (m1 - m2)) % p
-print('f')
-m = m2 + h * q
-print('g')
+m = pow(c, privateKey, n)
 print('Decrypted: %i' % m)
-
-# altp = (c ** privateKey) % n
-# print('Decrypted: %i' % altp)
