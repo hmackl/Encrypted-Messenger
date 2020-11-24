@@ -1,6 +1,7 @@
 import socket
 import tkinter as tk
 from tkinter import ttk
+from tkinter.filedialog import askopenfile
 import threading
 import math
 import random
@@ -25,6 +26,9 @@ class ConnectWindow(tk.Frame):
         self.createWidgets()
         self.serverIP = ''
         self.lift()
+    
+    def openFile(self):
+        file = askopenfile(mode ='r', filetypes =[('Python Files', '*.py')]) 
 
     def createWidgets(self):
         self.serverLabel = tk.Label(self, text='Server: ')
@@ -45,8 +49,10 @@ class ConnectWindow(tk.Frame):
         self.password.bind('<Return>', self.submit)
         self.status = tk.StringVar()
         self.statusLabel = tk.Label(self, textvariable=self.status, fg='Red')
+        self.openButton = tk.Button(self, text='Open Key')
+        self.openButton.grid(row=4, columnspan=2)
         self.submitButton = tk.Button(self, text='Connect', command=self.submit)
-        self.submitButton.grid(row=4, columnspan=2)
+        self.submitButton.grid(row=4, columnspan=2, sticky='E')
         self.pad = tk.Label(self)
 
     def submit(self, event = False):
