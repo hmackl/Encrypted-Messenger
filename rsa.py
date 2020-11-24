@@ -76,3 +76,4 @@ class RSA:
         for i in range(0, len(encoded), 4):
             plain += chr(int(encoded[i:i+4]) - 1000)
         return plain
+        

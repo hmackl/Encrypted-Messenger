@@ -36,16 +36,18 @@ class ConnectWindow(tk.Frame):
         self.server = tk.Entry(self)
         self.server.insert(0, socket.getfqdn())
         self.server.grid(row=0, column=1)
+        self.open = tk.Button(self, text='Open Key', command=self.openFile)
+        self.open.grid(row=1, columnspan=2)
         self.UsernameLabel = tk.Label(self, text='Username: ')
-        self.UsernameLabel.grid(row=1, column=0)
+        self.UsernameLabel.grid(row=2, column=0)
         self.username = tk.Entry(self)
         self.username.insert(0, 'admin')
-        self.username.grid(row=1, column=1)
+        self.username.grid(row=2, column=1)
         self.PasswordLabel = tk.Label(self, text='Password: ')
-        self.PasswordLabel.grid(row=2, column=0)
+        self.PasswordLabel.grid(row=3, column=0)
         self.password = tk.Entry(self, show='*')
         self.password.insert(0, 'adpass')
-        self.password.grid(row=2, column=1)
+        self.password.grid(row=3, column=1)
         self.password.bind('<Return>', self.submit)
         self.status = tk.StringVar()
         self.statusLabel = tk.Label(self, textvariable=self.status, fg='Red')
@@ -54,8 +56,15 @@ class ConnectWindow(tk.Frame):
         self.submitButton = tk.Button(self, text='Connect', command=self.submit)
         self.submitButton.grid(row=4, columnspan=2, sticky='E')
         self.pad = tk.Label(self)
+    
+    def openFile(self):
+        self.master.attributes('-topmost', False)
+        root.resizable(True, True)
+        root.filename = filedialog.askopenfilename(initialdir = "/",title = "Select file",filetypes = (("jpeg files","*.jpg"),("all files","*.*")))
+        root.resizable(False, False)
+        self.master.attributes('-topmost', True)
 
-    def submit(self, event = False):
+    def submit(self, event=False):
         try:
             if self.serverIP != self.server.get():
                 soc.connect((self.server.get(), 6969))
@@ -125,7 +134,6 @@ class ChatWindow(tk.Frame):
         self.msg.bind('<FocusIn>', self.deletePlaceholder)
         self.msg.bind('<FocusOut>', self.putPlaceholder)
         self.msg.bind('<Return>', self.send)
-        
         self.connect()
 
     def connect(self):
