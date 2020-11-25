@@ -1,7 +1,7 @@
 import socket
 import tkinter as tk
 from tkinter import ttk
-from tkinter.filedialog import askopenfile
+from tkinter import filedialog 
 import threading
 import math
 import random
@@ -18,6 +18,35 @@ def binDec(binary):
             string += chr(int(i, 2))
     return string
 
+class GenerateWindow(tk.Frame):
+    def __init__(self, master=None):
+        super().__init__(master)
+        self.master = master
+        self.pack()
+        self.createWidgets()
+
+    def createWidgets(self):
+        OPTIONS = [
+            512,
+            1024,
+            2048,
+            4096
+        ]
+        # self.bits = tk.StringVar(self)
+        # self.bits.set(OPTIONS[0])
+        # opt = tk.OptionMenu(self, self.bits, *OPTIONS)
+        # opt.pack()
+        # button = tk.Button(self, command=self.test)
+        # button.pack()
+        n = tk.StringVar()
+        self.box = ttk.Combobox(self, textvariable=n, state='readonly')
+        self.box['values'] = ('512', '1024', '2048', '4096')
+        self.box.current(0)
+        self.box.grid(column=0, row=0)
+    
+    def test(self):
+        print(self.)
+
 class ConnectWindow(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
@@ -27,17 +56,12 @@ class ConnectWindow(tk.Frame):
         self.serverIP = ''
         self.lift()
     
-    def openFile(self):
-        file = askopenfile(mode ='r', filetypes =[('Python Files', '*.py')]) 
-
     def createWidgets(self):
         self.serverLabel = tk.Label(self, text='Server: ')
         self.serverLabel.grid(row=0, column=0)
         self.server = tk.Entry(self)
         self.server.insert(0, socket.getfqdn())
         self.server.grid(row=0, column=1)
-        self.open = tk.Button(self, text='Open Key', command=self.openFile)
-        self.open.grid(row=1, columnspan=2)
         self.UsernameLabel = tk.Label(self, text='Username: ')
         self.UsernameLabel.grid(row=2, column=0)
         self.username = tk.Entry(self)
@@ -51,18 +75,26 @@ class ConnectWindow(tk.Frame):
         self.password.bind('<Return>', self.submit)
         self.status = tk.StringVar()
         self.statusLabel = tk.Label(self, textvariable=self.status, fg='Red')
-        self.openButton = tk.Button(self, text='Open Key')
-        self.openButton.grid(row=4, columnspan=2)
+        self.generateButton = tk.Button(self, text='Generate Key', command=self.generateWindow)
+        self.generateButton.grid(row=4, columnspan=2, sticky='W')
+        self.openButton = tk.Button(self, text='Open Key', command=self.openKey)
+        self.openButton.grid(row=4, columnspan=2, sticky='E')
         self.submitButton = tk.Button(self, text='Connect', command=self.submit)
-        self.submitButton.grid(row=4, columnspan=2, sticky='E')
+        self.submitButton.grid(row=5, columnspan=2)
         self.pad = tk.Label(self)
     
-    def openFile(self):
+    def openKey(self):
         self.master.attributes('-topmost', False)
         root.resizable(True, True)
-        root.filename = filedialog.askopenfilename(initialdir = "/",title = "Select file",filetypes = (("jpeg files","*.jpg"),("all files","*.*")))
+        keyDir = filedialog.askopenfilename(initialdir = "/",title = "Select file",filetypes = (("jpeg files","*.jpg"),("all files","*.*")))
+        keyFile = open(keyDir, 'r')
         root.resizable(False, False)
         self.master.attributes('-topmost', True)
+    
+    def generateWindow(self):
+        self.GenerateWindow = tk.Toplevel(self.master)
+        self.app = GenerateWindow(self.GenerateWindow)
+        self.GenerateWindow.attributes('-topmost', True)
 
     def submit(self, event=False):
         try:
