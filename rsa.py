@@ -76,4 +76,48 @@ class RSA:
         for i in range(0, len(encoded), 4):
             plain += chr(int(encoded[i:i+4]) - 1000)
         return plain
-        
+
+class AES:
+    def encrypt(self, plain):
+        for i in range(0, len(plain), 4):
+            print(plain[i:i+4])
+    def rotate(self, chars):
+        a = chars[0]
+        for i in range(3):
+            chars[i] = chars[i + 1]
+        chars[3] = a
+        return chars
+
+# aes = AES()
+# aes.encrypt('password')
+# print(aes.rotate(['1', 'd', '2', 'c', '3', 'a', '4', 'f']))
+
+def huffmanTree(plain):
+    c = {}
+    tree = []
+    for char in plain:
+        if (char not in c):
+            c[char] = plain.count(char)
+    for key in sorted(c, key=c.__getitem__):
+        tree.append([key, c[key]])
+        c[key] = c.pop(key)# / n
+    while len(tree) > 2:
+        childs = [tree.pop(0), tree.pop(0)]
+        node = [childs[0][0] + childs[1][0], childs[0][1] + childs[1][1], childs]
+        for leaf in range(len(tree)):
+            if (tree[leaf][1] > node[1]):
+                tree = tree[:leaf] + [node] + tree[leaf:]
+                break
+            elif(leaf + 1== len(tree)):
+                tree += [node]
+                break
+    def traverse(tree, branch=''):
+        for l in range(2):
+            if (len(tree[l]) == 3):
+                traverse(tree[l][2], str(l) + branch)
+            else:
+                c[tree[l][0]] = branch + str(l)
+    traverse(tree)
+    return c
+
+huffmanTree('A_DEAD_DAD_CEDED_A_BAD_BABE_A_BEADED_ABACA_BED')
