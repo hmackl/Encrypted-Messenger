@@ -3,8 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog 
 import threading
-import math
-import random
+import crypto
 
 soc = socket.socket()
 
@@ -47,7 +46,32 @@ class GenerateWindow(tk.Frame):
         self.generateButton.grid(row=3, columnspan=2)
         
     def generate(self):
-        print(self.bits)
+        rsa = crypto.RSA()
+        aes = crypto.AES()
+        bits = int(self.bits['values'][self.bits.current()])
+        keys = rsa.generateKey(bits)
+        if (self.password.get() != ''):
+            password = aes.keySchedule(self.password.get())
+            for i in range(2):
+                keys[i] = aes.encrypt(keys[i][2:], password)
+            cypher = aes.encrypt(self.username.get().encode('utf-8').hex(), password)
+            keyDir = filedialog.asksaveasfilename(initialdir = "/", title = "Select file", filetypes = (("Client Key","*.ckf"), ("All Files","*.*")))
+            print(cypher)
+            keyFile = open(keyDir + '.ckf', 'w+')
+            for i in range(0, len(cypher), 16):
+                keyFile.write(' '.join(cypher[i:i+16]) + '\n')
+            keyFile.write('-'*47)
+        # keyFile = open(keyDir.name + '.ckf', 'w+')
+        # keyFile.write(metadata)
+        
+        # keyFile.write(metadata)
+        # for state in cypher:
+        #     for row in state:
+        #         for h in row:
+        #             keyFile.write(h)
+        #             keyFile.write(' ')
+        #     keyFile.write('\n')
+        # keyFile.close()
 
 class ConnectWindow(tk.Frame):
     def __init__(self, master=None):
@@ -141,8 +165,8 @@ class ChatWindow(tk.Frame):
     def createWidgets(self):
         self.menu = tk.Menu(self)
         self.homeMenu = tk.Menu(self.menu, tearoff=0)
-        self.homeMenu.add_command(label='Connect', command=self.connect)
         self.homeMenu.add_command(label='Create Profile', command=self.createProfile)
+        self.homeMenu.add_command(label='Connect', command=self.connect)
         self.homeMenu.add_separator()
         self.homeMenu.add_command(label='Disconnect', command=self.destroy)
         self.homeMenu.add_command(label='Exit', command=self.master.destroy)
@@ -166,15 +190,13 @@ class ChatWindow(tk.Frame):
         self.msg.bind('<FocusOut>', self.putPlaceholder)
         self.msg.bind('<Return>', self.send)
 
-    def connect(self):
-        self.ConnectWindow = tk.Toplevel(self.master)
-        self.liftButton = tk.Button(self, text='Lift Off!!', command=self.ConnectWindow.lift)
-        self.liftButton.pack()
-        self.app = ConnectWindow(self.ConnectWindow)
-
     def createProfile(self):
         self.GenerateWindow = tk.Toplevel(self.master)
         self.app = GenerateWindow(self.GenerateWindow)
+
+    def connect(self):
+        self.ConnectWindow = tk.Toplevel(self.master)
+        self.app = ConnectWindow(self.ConnectWindow)
 
     # def link(self, event):
     #     self.pubKeys = self.genKey()

@@ -1,6 +1,4 @@
 from random import randint, getrandbits
-from math import ceil
-import threading
 
 sbox = [
         '63', '7c', '77', '7b', 'f2', '6b', '6f', 'c5', '30', '01', '67', '2b', 'fe', 'd7', 'ab', '76',
@@ -38,6 +36,7 @@ sboxInv = [
         'a0', 'e0', '3b', '4d', 'ae', '2a', 'f5', 'b0', 'c8', 'eb', 'bb', '3c', '83', '53', '99', '61',
         '17', '2b', '04', '7e', 'ba', '77', 'd6', '26', 'e1', '69', '14', '63', '55', '21', '0c', '7d'
 ]
+
 rCon = [0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x26]
 
 class RSA:
@@ -98,7 +97,7 @@ class RSA:
             privateKey = modularInverse(65537, en)
             if (privateKey == None):
                 privateKey = 0
-        return hex(publicKey), hex(privateKey)
+        return [hex(publicKey), hex(privateKey)]
 
     def encrypt(self, plain, key):
         encoded = ''
@@ -122,10 +121,44 @@ class AES:
             index = (16 * int(byte[0], 16)) + int(byte[1], 16)
             sByteArray.append(sbox[index])
         return sByteArray
+    def revSubWord(self, byteArray):
+        sByteArray = []
+        for byte in byteArray:
+            index = (16 * int(byte[0], 16)) + int(byte[1], 16)
+            sByteArray.append(sboxInv[index])
+        return sByteArray
     def rotate(self, chars, offset=1):
         for _ in range(offset):
             chars = [chars[1], chars[2], chars[3], chars[0]]
         return chars
+    def mixColumns(self, state):
+        def timesTwo(v):
+            s = v << 1
+            s &= 0xff
+            if (v & 128) != 0:
+                s = s ^ 0x1b
+            return s
+        def timesThree(v):
+            return timesTwo(v) ^ v
+        def mixColumn(column):
+            r = [
+                timesTwo(column[0]) ^ timesThree(
+                    column[1]) ^ column[2] ^ column[3],
+                timesTwo(column[1]) ^ timesThree(
+                    column[2]) ^ column[3] ^ column[0],
+                timesTwo(column[2]) ^ timesThree(
+                    column[3]) ^ column[0] ^ column[1],
+                timesTwo(column[3]) ^ timesThree(
+                    column[0]) ^ column[1] ^ column[2],
+            ]
+            return r
+        mixstate = [[], [], [], []]
+        for i in range(4):
+            col = [int(state[j][i], 16) for j in range(4)]
+            col = mixColumn(col)
+            for i in range(4):
+                mixstate[i].append(('0'+hex(col[i])[2:])[-2:])
+        return mixstate
     def keySchedule(self, key):
         def huffmanTree(plain):
             c = {}
@@ -162,8 +195,8 @@ class AES:
         N = 4
         K = [key[i:i+4] for i in range(0, 16, 4)]
         R = 11
-        W = [None] * ((4*R) - 1)
-        for i in range((4*R) - 1):
+        W = [None] * (4*R)
+        for i in range(4*R):
             w = W[i-1]
             if (i < N):
                 W[i] = K[i]
@@ -174,65 +207,84 @@ class AES:
                 W[i] = [('0'+hex(int(W[i-4][x], 16) ^ int(str(w[x]), 16))[2:])[-2:] for x in range(4)]
         return W
     def encrypt(self, plain, keys):
-        def mixColumns(state):
-            def timesTwo(v):
-                s = v << 1
-                s &= 0xff
-                if (v & 128) != 0:
-                    s = s ^ 0x1b
-                return s
-            def timesThree(v):
-                return timesTwo(v) ^ v
-            def mixColumn(column):
-                r = [
-                    timesTwo(column[0]) ^ timesThree(
-                        column[1]) ^ column[2] ^ column[3],
-                    timesTwo(column[1]) ^ timesThree(
-                        column[2]) ^ column[3] ^ column[0],
-                    timesTwo(column[2]) ^ timesThree(
-                        column[3]) ^ column[0] ^ column[1],
-                    timesTwo(column[3]) ^ timesThree(
-                        column[0]) ^ column[1] ^ column[2],
-                ]
-                return r
-            mixstate = [[], [], [], []]
-            for i in range(4):
-                col = [int(state[j][i], 16) for j in range(4)]
-                col = mixColumn(col)
-                for i in range(4):
-                    mixstate[i].append(('0'+hex(col[i])[2:])[-2:])
-            return mixstate
-        #producing states
         states = []
+        cypher = []
+        plain = ('0'*256+plain)[-256:]
         for i in range(0, len(plain), 8):
             states.append([])
             for x in range(0, 8, 2):
                 states[-1].append(plain[i:i+8][x:x+2])
         for state in range(0, len(states), 4):
             state = states[state:state+4]
-            #add round key
             for row in range(len(state)):
                 for i in range(len(state[row])):
-                    state[row][i] = ('0'+hex(int(state[row][i], 16) ^ int(keys[row][i], 16))[2:])[-2:]
-            #subBytes and rotate
+                    state[row][i] = ('0' + hex(int(state[row][i], 16) ^ int(keys[row][i], 16))[2:])[-2:]
             for i in range(9):
                 for row in range(len(state)):
                     state[row] = self.rotate(self.subWord(state[row]), row)
-                state = mixColumns(state)
+                state = self.mixColumns(state)
                 for row in range(len(state)):
-                    state[row] = [('0' + hex(int(state[row][c], 16) ^ int(keys[(4*i)+row][c], 16))[2:])[-2:] for c in range(4)]
-            #final round
-            state = [self.subWord(state[row]) for row in range(len(state))]
-            state = [self.rotate(state[row])]
-            #need to add round key
-            #https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
+                    state[row] = [('0' + hex(int(state[row][c], 16) ^ int(keys[(4*(i+1))+row][c], 16))[2:])[-2:] for c in range(4)]
+            for row in range(len(state)):
+                state[row] = self.rotate(self.subWord(state[row]), row)
+                state[row] = [('0' + hex(int(state[row][c], 16) ^ int(keys[40+row][c], 16))[2:])[-2:] for c in range(4)]
+            cypher.append(state)
+        return [k for i in cypher for j in i for k in j]
 
+    def decrypt(self, cypher, keys):
+        plain = []
+        for state in cypher:
+            for row in range(len(state)):
+                state[row] = [('0' + hex(int(state[row][c], 16) ^ int(keys[40+row][c], 16))[2:])[-2:] for c in range(4)]
+                state[row] = self.rotate(self.revSubWord(state[row]), 4-row)
+            for i in range(9):
+                for row in range(len(state)):
+                    state[row] = [('0' + hex(int(state[row][c], 16) ^ int(keys[(4*((8-i)+1))+row][c], 16))[2:])[-2:] for c in range(4)]
+                state = self.mixColumns(state)
+                state = self.mixColumns(state)
+                state = self.mixColumns(state)
+                for row in range(len(state)):
+                    state[row] = self.rotate(self.revSubWord(state[row]), 4-row)
+            for row in range(len(state)):
+                for i in range(len(state[row])):
+                    state[row][i] = ('0' + hex(int(state[row][i], 16) ^ int(keys[row][i], 16))[2:])[-2:]
+            plain.append(state)
+        return '0x'+''.join([i for j in plain for k in j for i in k])
 
-aes = AES()
-rsa = RSA()
-syncKeys = aes.keySchedule('password')
-asyncKey = rsa.generateKey()
-public = asyncKey[0]
-private = asyncKey[1]
-aes.encrypt(public[2:], syncKeys)
-#print(public, private)
+# aes = AES()
+# rsa = RSA()
+# syncKeys = aes.keySchedule('password')
+# asyncKey = rsa.generateKey()
+# public = asyncKey[0]
+# private = asyncKey[1]
+
+# print(private)
+
+# public = '0x3fa1f593a56ffb21f66ef1522a3d2d80707f29bb3430aa228c4a00c4f8e74722e3fc70ffef41a6ddec82150cb7c65d87e12cb1bf5aaf7196eb2497fac5d1c68dcb43ccd6677e11b7fdd99b411d10617b9b2531fc224a7b04ffb5fb8773da33061fce47780b7ba9977d8f5ffb53c7a8bdb65173dad7439001af9216596b9c2ae7'
+# cypher = aes.encrypt(public[2:], syncKeys)
+
+# keyFile = open('key.epm', 'w+')
+# for state in cypher:
+#     for row in state:
+#         for h in row:
+#             keyFile.write(h)
+#             keyFile.write(' ')
+#     keyFile.write('\n')
+# keyFile.close()
+
+# keyFile = open('key.epm', 'r')
+# states = []
+# for row in keyFile:
+#     state = []
+#     for i in range(4):
+#         state.append(row.split(' ')[i*4:i*4+4])
+#     states.append(state)
+# keyFile.close()
+# decrypted = aes.decrypt(states, syncKeys)
+
+# print(decrypted == public)
+
+# # array = [['cb', '19', '69', '2e'], ['7b', '73', 'af', 'ea'], ['0c', 'b9', 'd0', '0d'], ['df', '60', '2a', '0f']]
+# # for _ in range(9):
+# #     array = aes.mixColumns(array)
+# # print(array)
