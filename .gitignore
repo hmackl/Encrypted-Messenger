@@ -2,3 +2,6 @@
 messenger.db
 __pycache__
 *.zip
+temp.py
+*.db
+*.db-journal
